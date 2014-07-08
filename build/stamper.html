@@ -1,0 +1,189 @@
+<!DOCTYPE HTML>
+<html><head><meta charset="UTF-8"><title>stamper</title><script type="text/javascript" src="elm-runtime.js"></script><script type="text/javascript">Elm.Main = Elm.Main || {};
+Elm.Main.make = function (_elm) {
+   "use strict";
+   _elm.Main = _elm.Main || {};
+   if (_elm.Main.values)
+   return _elm.Main.values;
+   var _N = Elm.Native,
+   _U = _N.Utils.make(_elm),
+   _L = _N.List.make(_elm),
+   _A = _N.Array.make(_elm),
+   _E = _N.Error.make(_elm),
+   $moduleName = "Main";
+   var Basics = Elm.Basics.make(_elm);
+   var Color = Elm.Color.make(_elm);
+   var Graphics = Graphics || {};
+   Graphics.Collage = Elm.Graphics.Collage.make(_elm);
+   var Graphics = Graphics || {};
+   Graphics.Element = Elm.Graphics.Element.make(_elm);
+   var Keyboard = Elm.Keyboard.make(_elm);
+   var List = Elm.List.make(_elm);
+   var Maybe = Elm.Maybe.make(_elm);
+   var Mouse = Elm.Mouse.make(_elm);
+   var Native = Native || {};
+   Native.Json = Elm.Native.Json.make(_elm);
+   var Native = Native || {};
+   Native.Ports = Elm.Native.Ports.make(_elm);
+   var Signal = Elm.Signal.make(_elm);
+   var String = Elm.String.make(_elm);
+   var Text = Elm.Text.make(_elm);
+   var Time = Elm.Time.make(_elm);
+   var Window = Elm.Window.make(_elm);
+   var _op = {};
+   var rotationIncrement = 1.0 / 32;
+   var sizeIncrement = 5;
+   var myBlue = A4(Color.hsla,
+   Basics.turns(0.6),
+   0.5,
+   0.3,
+   0.8);
+   var myGreen = A4(Color.hsla,
+   Basics.turns(0.4),
+   0.5,
+   0.3,
+   0.8);
+   var myRed = A4(Color.hsla,
+   Basics.turns(0.0),
+   0.5,
+   0.3,
+   0.8);
+   var updateState = F2(function (key,
+   state) {
+      return _U.cmp(key,
+      51) > -1 && _U.cmp(key,
+      57) < 1 ? _U.replace([["corners"
+                            ,key - 48]],
+      state) : _U.eq(key,
+      82) ? _U.replace([["color"
+                        ,myRed]],
+      state) : _U.eq(key,
+      84) ? _U.replace([["color"
+                        ,myGreen]],
+      state) : _U.eq(key,
+      89) ? _U.replace([["color"
+                        ,myBlue]],
+      state) : _U.eq(key,
+      87) ? _U.replace([["size"
+                        ,state.size + sizeIncrement]],
+      state) : _U.eq(key,
+      83) && _U.cmp(state.size,
+      10) > -1 ? _U.replace([["size"
+                             ,state.size - sizeIncrement]],
+      state) : _U.eq(key,
+      68) ? _U.insert("rotation",
+      state.rotation - Basics.turns(rotationIncrement),
+      state) : _U.eq(key,
+      65) ? _U.insert("rotation",
+      state.rotation + Basics.turns(rotationIncrement),
+      state) : state;
+   });
+   var scene = F3(function (_v0,
+   currentStamp,
+   stamps) {
+      return function () {
+         switch (_v0.ctor)
+         {case "_Tuple2":
+            return function () {
+                 var toPos = function (_v4) {
+                    return function () {
+                       switch (_v4.ctor)
+                       {case "_Tuple2":
+                          return {ctor: "_Tuple2"
+                                 ,_0: Basics.toFloat(_v4._0) - Basics.toFloat(_v0._0) / 2
+                                 ,_1: Basics.toFloat(_v0._1) / 2 - Basics.toFloat(_v4._1)};}
+                       _E.Case($moduleName,
+                       "on line 30, column 22 to 74");
+                    }();
+                 };
+                 var printStamp = function (_v8) {
+                    return function () {
+                       return Graphics.Collage.move(toPos(_v8.pos))(Graphics.Collage.rotate(_v8.rotation)(Graphics.Collage.filled(_v8.color)(A2(Graphics.Collage.ngon,
+                       _v8.corners,
+                       _v8.size))));
+                    }();
+                 };
+                 return A2(Graphics.Collage.collage,
+                 _v0._0,
+                 _v0._1)({ctor: "::"
+                         ,_0: printStamp(currentStamp)
+                         ,_1: A2(List.map,
+                         printStamp,
+                         stamps)});
+              }();}
+         _E.Case($moduleName,
+         "between lines 30 and 34");
+      }();
+   });
+   var protoStamp = {_: {}
+                    ,color: myGreen
+                    ,corners: 3
+                    ,pos: {ctor: "_Tuple2"
+                          ,_0: 0
+                          ,_1: 0}
+                    ,rotation: 0
+                    ,size: 30};
+   var makeStamp = F2(function (pos,
+   corners) {
+      return _U.replace([["pos"
+                         ,pos]
+                        ,["corners",corners]],
+      protoStamp);
+   });
+   var keyState = A3(Signal.foldp,
+   updateState,
+   protoStamp,
+   Keyboard.lastPressed);
+   var stampState = A2(Signal._op["~"],
+   A2(Signal._op["<~"],
+   F2(function (s,p) {
+      return _U.replace([["pos"
+                         ,p]],
+      s);
+   }),
+   keyState),
+   Mouse.position);
+   var stamps = A3(Signal.foldp,
+   F2(function (x,y) {
+      return {ctor: "::"
+             ,_0: x
+             ,_1: y};
+   }),
+   _L.fromArray([]),
+   A2(Signal.sampleOn,
+   Mouse.clicks,
+   stampState));
+   var Stamp = F5(function (a,
+   b,
+   c,
+   d,
+   e) {
+      return {_: {}
+             ,color: e
+             ,corners: b
+             ,pos: a
+             ,rotation: d
+             ,size: c};
+   });
+   var main = A4(Signal.lift3,
+   scene,
+   Window.dimensions,
+   stampState,
+   stamps);
+   _elm.Main.values = {_op: _op
+                      ,main: main
+                      ,protoStamp: protoStamp
+                      ,makeStamp: makeStamp
+                      ,keyState: keyState
+                      ,stampState: stampState
+                      ,stamps: stamps
+                      ,scene: scene
+                      ,myRed: myRed
+                      ,myGreen: myGreen
+                      ,myBlue: myBlue
+                      ,sizeIncrement: sizeIncrement
+                      ,rotationIncrement: rotationIncrement
+                      ,updateState: updateState
+                      ,Stamp: Stamp};
+   return _elm.Main.values;
+};</script></head><body><script type="text/javascript">Elm.fullscreen(Elm.Main)</script><noscript></noscript></body></html>
