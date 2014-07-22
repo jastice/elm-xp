@@ -1,51 +1,96 @@
 import Mouse
 import Keyboard
 import Window
+import Dragging
+import Keyboard.Keys as K
 
-{--
-  Click to stamp! 
-  Keys:
-    3-9 stamp shape (corners)
-    r   red stamp!
-    t   green stamp!
-    y   blue stamp!
-    w/s resize stamp
-    a/d rotate stamp
---}
+instructions = [markdown|
+## Click to stamp!
 
-main = lift3 scene Window.dimensions stampState stamps
+    Keys:
+      3-9 stamp shape (corners)
+      r   red stamp!
+      g   green stamp!
+      b   blue stamp!
+      w/s resize stamp
+      a/d rotate stamp
+      u   undo
+|]
 
 type Stamp = { pos: (Int,Int), corners: Int, size: Float, rotation: Float, color: Color }
 protoStamp = { pos=(0,0), corners=3, size=30, rotation=0, color=myGreen }
-makeStamp: (Int,Int) -> Int -> Stamp
-makeStamp pos corners = { protoStamp | pos<-pos, corners<-corners }
 
--- put together stamp state from last number key press and mouse position when clicking
-keyState = foldp updateState protoStamp Keyboard.lastPressed
-stampState = (\s p -> {s|pos<-p}) <~ keyState ~ Mouse.position
-stamps = foldp (::) [] (sampleOn Mouse.clicks stampState)
+data Action = Press Stamp | Undo | Inaction
+
+-- update stamp history based on actions
+updateHistory: Action -> [Stamp] -> [Stamp]
+updateHistory action history = case action of
+  Press stamp -> stamp :: history
+  Undo -> drop 1 history
+  Inaction -> history
+
+keyAction k = if k == 85 then Undo else Inaction
+
+-- actions affecting the board
+actions: Signal Action
+actions = merge
+  (keyAction <~ Keyboard.lastPressed)
+  (Press <~ sampleOn Mouse.clicks stampState)
+
+data StampAction = StampKey Int | StampDrag Dragging.DragState | StampMove (Int,Int)
+-- actions affecting the stamp state
+stampActions: Signal StampAction
+stampActions = merges [
+  StampKey <~ Keyboard.lastPressed,
+  StampDrag <~ Dragging.dragging,
+  StampMove <~ Mouse.position
+  ]
+
+-- the actual stamp state is dependent on stamp actions and previous stamp state
+stampState = foldp updateState protoStamp stampActions
+stamps = foldp updateHistory [] actions
 
 
-scene (w,h) currentStamp stamps =
+
+
+playground (w,h) currentStamp stamps =
   let toPos (x,y) = (toFloat x - toFloat w / 2, toFloat h / 2 - toFloat y)
       printStamp {pos, corners, size, rotation, color} = 
         ngon corners size |> filled color |> rotate rotation |> move (toPos pos)
 
   in collage w h <| printStamp currentStamp :: map printStamp stamps
 
-myRed = hsla (turns 0.0) 0.5 0.3 0.8
-myGreen = hsla (turns 0.4) 0.5 0.3 0.8
-myBlue = hsla (turns 0.6) 0.5 0.3 0.8
+myColor h = hsla (turns h) 0.5 0.3 0.8
+myRed = myColor 0
+myGreen = myColor 0.4
+myBlue = myColor 0.6
 sizeIncrement = 5
 rotationIncrement = 1.0/32
 
-updateState key state = 
-  if | key >= 51 && key <= 57 -> { state | corners <- key-48 } -- 3-9
-     | key == 82 -> { state | color <- myRed } -- r
-     | key == 84 -> { state | color <- myGreen } -- t
-     | key == 89 -> { state | color <- myBlue } -- y
-     | key == 87 -> { state | size <- state.size + sizeIncrement } -- w
-     | key == 83 && state.size >= 10 -> { state | size <- state.size - sizeIncrement } -- s
-     | key == 68 -> { state | rotation = state.rotation - (turns rotationIncrement)} -- d
-     | key == 65 -> { state | rotation = state.rotation + (turns rotationIncrement)} -- a
-     | otherwise -> state
+-- good ol' pythagoras
+hyp a b = sqrt (a*a + b*b)
+-- vector distance
+dist (x1,y1) (x2,y2) = hyp (x2-x1) (y2-y1)
+
+-- update state based on key pressed
+updateState: StampAction -> Stamp -> Stamp
+updateState stampAction state = case stampAction of
+  StampKey key ->
+    if | key >= 51 && key <= 57 -> { state | corners <- key-48 } -- 3-9
+       | key == 82 -> { state | color <- myRed } -- r
+       | key == 71 -> { state | color <- myGreen } -- g
+       | key == 66 -> { state | color <- myBlue } -- b
+       | key == 87 -> { state | size <- state.size + sizeIncrement } -- w
+       | key == 83 && state.size >= 2*sizeIncrement -> { state | size <- state.size - sizeIncrement } -- s
+       | key == 68 -> { state | rotation = state.rotation - (turns rotationIncrement)} -- d
+       | key == 65 -> { state | rotation = state.rotation + (turns rotationIncrement)} -- a
+       | otherwise -> state
+  StampDrag (Just {start,now}) -> { state | size <- toFloat (dist start now) }
+  StampMove p -> { state | pos <- p }
+  _ -> state
+
+
+-- overlay instructions on the playground
+scene pg = layers [ pg, instructions ]
+main = scene <~ (playground <~ Window.dimensions ~ stampState ~ stamps)
+
