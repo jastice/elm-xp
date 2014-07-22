@@ -6,13 +6,15 @@ type Bubble = { size_: Float, color_: Color, pos: (Float,Float) }
 aBubble = { size_=40, color_ = red, pos = (0,0) }
 
 applyForce: (Float,Float) -> Bubble -> Bubble
-applyForce (x,y) b = 
+applyForce (fx,fy) b = 
   let (x0,y0) = b.pos
+      x = fx * (100 / b.size_) -- little bubbles bouy faster
+      y = fy * (b.size_ / 100) -- big bubbles move up faster
   in { b | pos <- (x0+x,y0+y)}
 
 -- x/y forces of movement, dependent on time
 force: Float -> (Float,Float)
-force t = (sin (t/300)*2, 2)
+force t = (sin (t/600)*2, 2)
 
 -- accumulated fps
 fpst n = foldp (+) 0 (fps n)
@@ -28,4 +30,12 @@ scene (w,h) bubbles =
 
   in collage w h (map drawBubble bubbles)
 
-main = scene <~ Window.dimensions ~ floatingBubbles [aBubble]
+initBubbles = [
+  { size_=40, color_=red, pos = (0,0) },
+  { size_=70, color_=yellow, pos=(100,10) },
+  { size_=30, color_=blue, pos=(200,10) },
+  { size_=30, color_=green, pos=(-330,-5) },
+  { size_=20, color_=green, pos=(-130,0) }
+  ]
+
+main = scene <~ Window.dimensions ~ floatingBubbles initBubbles
