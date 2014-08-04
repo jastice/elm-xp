@@ -1,4 +1,4 @@
--- based roughly on http://gamedevelopment.tutsplus.com/tutorials/how-to-create-a-custom-2d-physics-engine-the-basics-and-impulse-resolution--gamedev-6331
+-- based roughly on http://gamedevelopment.tutsplus.com/tutorials/gamedev-6331
 module BubblePhysics where
 
 -- plain old pair for coordinates, vectors
@@ -18,14 +18,15 @@ type Box = Body {
   min: Vec2, max: Vec2
 }
 
+
 -- basic bubble with some defaults
 makeBubble radius pos velocity = 
   makeBubble2 radius pos velocity 1 1
 
 makeBubble2 radius pos velocity density restitution = 
   { radius = radius, pos = pos, velocity = velocity, 
-  inverseMass = 1/(pi*radius*radius*density), 
-  restitution = restitution }
+    inverseMass = 1/(pi*radius*radius*density), 
+    restitution = restitution }
 
 -- just vector things
 
@@ -49,10 +50,14 @@ lenSq: Vec2 -> Float
 lenSq (x,y) = x*x + y*y
 
 
--- calculate collision normal, penetration depth of a collision
+-- collision calculation for different types of bodies
+
+type CollisionResult = { normal: Vec2, penetration: Float }
+
+-- calculate collision normal, penetration depth of a collision among bubbles
 -- simple optimization: doesn't compute sqrt unless necessary
-collison: Bubble -> Bubble -> { normal: Vec2, penetration: Float }
-collison b0 b1 = 
+collision: Bubble -> Bubble -> CollisionResult
+collision b0 b1 = 
   let
     b0b1 = minus b1.pos b0.pos
     radiusb0b1 = b0.radius+b1.radius
@@ -65,11 +70,10 @@ collison b0 b1 =
           in { normal = div2 b0b1 d, penetration = radiusb0b1 - d }
 
 
--- modify bubble's trajectory when they collide
-resolveCollision: Bubble -> Bubble -> (Bubble, Bubble)
-resolveCollision b0 b1 = 
+-- modify bodies' trajectories when they collide
+resolveCollision: CollisionResult -> Body a -> Body a -> (Body a, Body a)
+resolveCollision {normal,penetration} b0 b1 = 
   let 
-    {normal,penetration} = collison b0 b1
     relativeVelocity = minus b1.velocity b0.velocity
     velocityAlongNormal = dot relativeVelocity normal
   in 
@@ -89,7 +93,8 @@ collideWith: Bubble -> [Bubble] -> [Bubble] -> [Bubble]
 collideWith a0 bubbles acc = case bubbles of
   [] -> a0 :: acc
   (b0 :: bs) -> 
-    let (a1,b1) = resolveCollision a0 b0
+    let collisionResult = collision a0 b0
+        (a1,b1) = resolveCollision collisionResult a0 b0
     in collideWith a1 bs (b1 :: acc)
 
 -- recursive collision resolution
