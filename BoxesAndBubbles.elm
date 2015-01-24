@@ -1,32 +1,33 @@
+module BoxesAndBubbles where
 -- based roughly on http://gamedevelopment.tutsplus.com/tutorials/gamedev-6331
-module BubblePhysics where
 
 -- plain old pair for coordinates, vectors
 type Vec2 = (Float,Float)
 
-type Body b = { b |
+type Body_ b = { b |
   velocity: Vec2, -- direction and speed
   inverseMass: Float, -- we usually use only inverse mass for calculations
   restitution: Float -- bounciness factor
 }
 -- it's all about the bubble
-type Bubble = Body { 
+type Bubble_ = Body_ { 
   radius: Float, pos: Vec2 -- center position
 }
 
-type Box = Body {  
+type Box_ = Body_ {  
   min: Vec2, max: Vec2
 }
 
+data Body = Box Box_ | Bubble Bubble_
 
 -- basic bubble with some defaults
 makeBubble radius pos velocity = 
   makeBubble2 radius pos velocity 1 1
 
 makeBubble2 radius pos velocity density restitution = 
-  { radius = radius, pos = pos, velocity = velocity, 
-    inverseMass = 1/(pi*radius*radius*density), 
-    restitution = restitution }
+  Bubble { radius = radius, pos = pos, velocity = velocity, 
+  inverseMass = 1/(pi*radius*radius*density), 
+  restitution = restitution }
 
 -- just vector things
 
@@ -56,7 +57,7 @@ type CollisionResult = { normal: Vec2, penetration: Float }
 
 -- calculate collision normal, penetration depth of a collision among bubbles
 -- simple optimization: doesn't compute sqrt unless necessary
-collision: Bubble -> Bubble -> CollisionResult
+collisionBubbleBubble: Bubble -> Bubble -> CollisionResult
 collision b0 b1 = 
   let
     b0b1 = minus b1.pos b0.pos
@@ -68,6 +69,19 @@ collision b0 b1 =
        | otherwise -> 
           let d = sqrt distanceSq
           in { normal = div2 b0b1 d, penetration = radiusb0b1 - d }
+
+collisionBoxBox: Box -> Box -> CollisionResult
+collision b0 b1 = {normal = (0,0), penetration = 0}
+
+collisionBoxBubble: Box -> Bubble -> CollisionResult
+collision box bubble = {normal = (0,0), penetration = 0}
+
+collision: Body -> Body -> CollisionResult
+collision body0 body1 = case (b0,b1) of
+  (Bubble b0, Bubble b1) -> collisionBubbleBubble b0 b1
+  (Box b0, Box b1) -> collisionBoxBox b0 b1
+  (Box box, Bubble bubble) -> collisionBoxBubble box bubble
+  (Bubble bubble, Box box) -> collisionBoxBubble box bubble
 
 
 -- modify bodies' trajectories when they collide
@@ -89,7 +103,7 @@ resolveCollision {normal,penetration} b0 b1 =
 
 -- collide a0 with all the bubbles, modifying b along the way.
 -- return (updated a0, [updated bubbles])
-collideWith: Bubble -> [Bubble] -> [Bubble] -> [Bubble]
+collideWith: Body a -> [Body a] -> [Body a] -> [Body a]
 collideWith a0 bubbles acc = case bubbles of
   [] -> a0 :: acc
   (b0 :: bs) -> 
@@ -107,16 +121,12 @@ collide acc bubbles =
       in collide (h1::acc) t1
 
 
--- apply force to a bubble
-applyForce force bubble = { bubble | velocity <- plus force bubble.velocity}
--- update bubble location by applying their velocity
-update bubble = { bubble | pos <- plus bubble.pos bubble.velocity }
-
 -- applies accellerating force, does movement and resolves collisions for all the bubbles
 step: Vec2 -> [Bubble] -> [Bubble]      
 step force bubbles = 
-  let bubblesWithForce = map (applyForce force) bubbles
-  in map update (collide [] bubblesWithForce)
+  let update bubble = { bubble | pos <- plus bubble.pos bubble.velocity }
+  in map update (collide [] bubbles)
   -- resolve all collisions; optimization: broad phase
   -- TODO apply forces
+
 
