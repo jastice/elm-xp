@@ -5,7 +5,7 @@ import Dragging
 import Markdown
 import Color (..)
 import List
-import Signal (..)
+import Signal (Signal,(<~), (~), foldp, merge, mergeMany, sampleOn)
 import Graphics.Collage (..)
 import Graphics.Element (..)
 import Keyboard.Keys as K
@@ -61,8 +61,7 @@ playground (w,h) currentStamp stamps =
   let toPos (x,y) = (toFloat x - toFloat w / 2, toFloat h / 2 - toFloat y)
       printStamp {pos, corners, size, rotation, color} = 
         ngon corners size |> filled color |> rotate rotation |> move (toPos pos)
-
-  in collage w h <| printStamp currentStamp :: map printStamp stamps
+  in collage w h <| printStamp currentStamp :: List.map printStamp stamps
 
 myColor h = hsla (turns h) 0.5 0.3 0.8
 myRed = myColor 0
@@ -72,7 +71,11 @@ sizeIncrement = 5
 rotationIncrement = 1.0/32
 
 -- good ol' pythagoras
-hyp a b = sqrt (a*a + b*b)
+hyp: Int -> Int -> Float
+hyp a b = 
+  let a1 = toFloat a
+      b1 = toFloat b
+  in sqrt (a1*a1 + b1*b1)
 -- vector distance
 dist (x1,y1) (x2,y2) = hyp (x2-x1) (y2-y1)
 
@@ -86,10 +89,10 @@ updateState stampAction state = case stampAction of
        | key == 66 -> { state | color <- myBlue } -- b
        | key == 87 -> { state | size <- state.size + sizeIncrement } -- w
        | key == 83 && state.size >= 2*sizeIncrement -> { state | size <- state.size - sizeIncrement } -- s
-       | key == 68 -> { state | rotation = state.rotation - (turns rotationIncrement)} -- d
-       | key == 65 -> { state | rotation = state.rotation + (turns rotationIncrement)} -- a
+       | key == 68 -> { state | rotation <- state.rotation - (turns rotationIncrement)} -- d
+       | key == 65 -> { state | rotation <- state.rotation + (turns rotationIncrement)} -- a
        | otherwise -> state
-  StampDrag (Just {start,now}) -> { state | size <- toFloat (dist start now) }
+  StampDrag (Just {start,now}) -> { state | size <- (dist start now) }
   StampMove p -> { state | pos <- p }
   _ -> state
 
