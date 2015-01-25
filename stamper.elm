@@ -43,7 +43,7 @@ actions = merge
   (keyAction <~ Keyboard.lastPressed)
   (Press <~ sampleOn Mouse.clicks stampState)
 
-type StampAction = StampKey Int | StampDrag Dragging.DragState | StampMove (Int,Int)
+type StampAction = StampKey Int | StampDrag Dragging.DragState Stamp | StampMove (Int,Int)
 -- actions affecting the stamp state
 stampActions: Signal StampAction
 stampActions = mergeMany [
@@ -76,8 +76,10 @@ hyp a b =
   let a1 = toFloat a
       b1 = toFloat b
   in sqrt (a1*a1 + b1*b1)
--- vector distance
-dist (x1,y1) (x2,y2) = hyp (x2-x1) (y2-y1)
+-- vector distance with left/right sign
+dist (x1,y1) (x2,y2) = 
+  let d = hyp (x2-x1) (y2-y1)
+  in if x1<x2 then -d else d
 
 -- update state based on key pressed
 updateState: StampAction -> Stamp -> Stamp
