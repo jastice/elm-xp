@@ -12,7 +12,7 @@ main = asText <~ dragging
 
 {-| Starting and current position of a drag. Nothing when there is no drag.
 -}
-type alias DragState = Maybe {start: (Int,Int), now: (Int,Int)}
+type alias DragState = Maybe { start: (Int,Int), now: (Int,Int)}
 
 type alias MouseState = {dragging: Bool, pos: (Int,Int)}
 
