@@ -3,12 +3,9 @@ module Dragging where
 import Keyboard
 import Mouse
 import Time
-import Signal (..)
-import Text (asText)
+import Signal exposing (..)
+import Text exposing (fromString)
 
-
---main = asText <~ count Mouse.clicks
-main = asText <~ dragging
 
 {-| Starting and current position of a drag. Nothing when there is no drag.
 -}
@@ -33,11 +30,3 @@ mouseState = updateMouseState <~ Mouse.isDown ~ Mouse.position
 -}
 dragging: Signal DragState
 dragging = dropRepeats (foldp updateDragState Nothing mouseState)
-
---dragWhen: Signal Bool -> Signal DragState
---dragWhen when = 
---  let ms = keepWhen when False Mouse.position
---  in
-
---dragOn: Keyboard.KeyCode -> Signal DragState
---dragOn key = keepWhen (Keyboard.isDown key) 
